@@ -21,6 +21,53 @@
                     }
                 });
             }
+
+
+                // Fonction pour afficher le champ de saisie du nouveau nom du fichier
+    function renameFile(form) {
+        var modalBodyHtml = "<div class='form-group'>";
+        modalBodyHtml += "<label for='new-file-name'>New File Name:</label>";
+        modalBodyHtml += "<input type='text' class='form-control' id='new-file-name' placeholder='Enter new name' required />";
+        modalBodyHtml += "</div>";
+        modalBodyHtml += "<button type='button' class='btn btn-success' onclick='saveNewFileName();'>Save</button>";
+        document.querySelector("#viewFileModal .modal-body").innerHTML = modalBodyHtml;
+        $("#viewFileModal").modal("show");
+    }
+
+    // Fonction pour enregistrer le nouveau nom du fichier
+    function saveNewFileName() {
+        var newName = document.getElementById('new-file-name').value.trim();
+
+        if (newName === "") {
+            alert("Please enter a new file name.");
+            return;
+        }
+
+        var _id = document.querySelector("#viewFileModal .modal-body").getAttribute("data-id");
+
+        // Soumettre le formulaire pour mettre à jour le nom du fichier
+        var formData = new FormData();
+        formData.append('_id', _id);
+        formData.append('newName', newName);
+
+        fetch('<%= request.mainURL %>/RenameFile', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert("File name updated successfully.");
+                location.reload();  // Rafraîchir la page pour afficher le nouveau nom
+            } else {
+                alert("Error renaming the file.");
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert("An error occurred.");
+        });
+    }
             
             // send the request to server to download the file
             function downloadFile(self) {

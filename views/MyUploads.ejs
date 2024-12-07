@@ -76,6 +76,8 @@
 
                 <form method="POST" action="<%= request.mainURL %>/ShareViaLink" id="form-share-via-link" style="display: contents;">
                     <input type="hidden" name="_id" required />
+
+                    <input placeholder="email" name="sharedWith" required />
                 </form>
 
                 <button type="button" class="btn btn-primary" onclick="shareViaLink();">
@@ -89,6 +91,16 @@
                         }
                     }
                 </script>
+
+                <form method="POST" action="<%= request.mainURL %>/RenameFile"
+                    id="form-delete-file">
+                    <input type="hidden" name="_id" required />
+
+                    <button type="button" class="btn btn-primary"
+                        onclick="renameFile(this);">
+                        Rename File
+                    </button>
+                </form>
 
                 <form method="POST" action="<%= request.mainURL %>/DeleteFile"
                     id="form-delete-file">
