@@ -258,10 +258,21 @@ http.listen(3000, function () {
 
         // get all files shared with logged-in user
         app.get("/SharedWithMe/:_id?", async function (request, result) {
-            result.render("SharedWithMe", {
-                "request": request
-            });
+            if (request.session.user) {
+                var links = await database.collection("public_links").find({
+                    
+                }).toArray();
+
+                result.render("SharedWithMe", {
+                    "request": request,
+                    "links": links
+                });
+                return false;
+            }
+
+            result.redirect("/Login");
         });
+
 
         app.post("/DeleteLink", async function (request, result) {
 
@@ -343,8 +354,50 @@ http.listen(3000, function () {
             });
         });
 
+
+        // Route to share a file privately
+app.post("/ShareFile", async function (request, result) {
+    const { fileId, recipientEmail } = request.fields;
+
+    if (request.session.user) {
+        // Find the recipient user
+        const recipient = await database.collection("users").findOne({ email: recipientEmail });
+
+        if (!recipient) {
+            request.session.status = "error";
+            request.session.message = "Recipient does not exist.";
+            return result.redirect("/MyUploads");
+        }
+
+        // Find the file in the current user's uploaded files
+        const user = await database.collection("users").findOne({ _id: ObjectId(request.session.user._id) });
+        const fileToShare = user.uploaded.find(file => file._id.toString() === fileId);
+
+        if (!fileToShare) {
+            request.session.status = "error";
+            request.session.message = "File not found.";
+            return result.redirect("/MyUploads");
+        }
+
+        // Add the file to the recipient's shared files
+        await database.collection("users").updateOne(
+            { _id: ObjectId(recipient._id) },
+            { $push: { sharedWithMe: fileToShare } }
+        );
+
+        request.session.status = "success";
+        request.session.message = "File shared successfully.";
+        return result.redirect("/MyUploads");
+    }
+
+    result.redirect("/Login");
+});
+
+
         app.post("/ShareViaLink", async function (request, result) {
             const _id = request.fields._id;
+
+            const sharedWithMe= request.fields.sharedWith;
 
             if (request.session.user) {
                 var user = await database.collection("users").findOne({
@@ -371,7 +424,10 @@ http.listen(3000, function () {
                             "_id": user._id,
                             "name": user.name,
                             "email": user.email
+
+                            
                         },
+                        "sharedWith" : [sharedWithMe],
                         "createdAt": new Date().getTime()
                     });
 
@@ -417,6 +473,51 @@ http.listen(3000, function () {
 
             result.redirect("/Login");
         });
+
+        //Rename File
+        app.post('/RenameFile', async function (request, result) {
+            const fileId = request.fields._id;  // File ID from the request
+            const newName = request.fields.newName;  // New name of the file
+        
+            if (request.session.user) {  // Check if the user is logged in
+                // Find the user from the database
+                var user = await database.collection("users").findOne({
+                    "_id": ObjectId(request.session.user._id)
+                });
+        
+                // Find the file in the user's uploaded files array
+                var updatedUploaded = user.uploaded.map(file => {
+                    if (file._id.toString() === fileId) {  // Find the file to rename
+                        file.name = newName;  // Update the file name
+                    }
+                    return file;
+                });
+        
+                // Update the user's uploaded files array with the new file name
+                await mongoClient.db("yourDatabase").collection("users").updateOne(
+                    { "_id": ObjectId(request.session.user._id) },
+                    { $set: { "uploaded": updatedUploaded } }
+                );
+                
+        
+                // Update the file name in the public_links collection
+                await mongoClient.db("yourDatabase").collection("public_links").updateOne(
+                    { "_id": ObjectId(fileId) },
+                    { $set: { "file.name": newName } }
+                );
+        
+                // Redirect back to the previous page or home page
+                const backURL = request.header('Referer') || '/';
+                result.redirect(backURL);
+                return false;
+            }
+        
+            // If the user is not logged in, redirect to login
+            result.redirect("/Login");
+        });
+        
+        
+
 
         // download file
         app.post("/DownloadFile", async function (request, result) {
